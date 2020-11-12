@@ -12,3 +12,4 @@ plot(bTest$X1, bTest$X2, col=bTest$Y+2)
 gaussian.fit <- ksvm(Y~., data=bTrain, C=5, sigma=5)
 
 plot(predict(gaussian.fit, bTrain))
+print("Hello World")
