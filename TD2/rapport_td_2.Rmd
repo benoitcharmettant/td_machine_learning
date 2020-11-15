@@ -1,0 +1,31 @@
+---
+title: "R Notebook"
+output: html_notebook
+authors: Antoine Bourgoin & Benoit Charmettant
+date: Novembre 2020 
+---
+```{r}
+library(glmnetUtils)
+library(caret)
+library(glmnet)
+ad_dataset <- read.table("Alzheimer_Webster.txt")
+```
+
+# Cas pratique
+
+Commençons par charger les données. Et diviser les paramètres des labels
+
+```{r}
+X <- model.matrix(Y~., data=ad_dataset)[,-1]
+Y <- ad_dataset$Y
+```
+```{r}
+fit.data <- cv.glmnet(X, Y, alpha = 1, family = "binomial", type.measure ="class")
+plot(fit.data)
+```
+
+```{r}
+fit.data.b <- cva.glmnet(X, Y, family = "binomial", type.measure ="class")
+plot(fit.data.b)
+```
+
