@@ -1,0 +1,278 @@
+---
+title: "TP1-SVM-Rapport"
+author: "Antoine Bourgoin & Benoit Charmettant"
+date: "Pour le 18/11/2020"
+output:
+  pdf_document: default
+  html_document: default
+---
+# Exercice 1
+
+Les données à analyser sont les suivantes, réparties en deux classes :
+
+```{r}
+x = c(1, 2, 4, 5, 6) ; y = c(1, 1, 2, 2, 1)
+plot(x, rep(0, 5), pch = c(21, 22)[y], bg = c("red", "green3")[y], cex = 1.5, ylim = c(-1.7, 1), xlim = c(0, 8), ylab = "",
+     xlab = "x", las = 2)
+
+grid()
+text(matrix(c(1.5, 4.3, 7, 0.5, 0.5, 0.5), 3, 2), c("class 1", "class -1", "class 1"),
+     col = c("red", "green3", "red"))
+abline(h=0) ; abline(v=c(3, 5.5))
+```
+
+Création de la fonction noyau polynomiale introduite dans l'énoncé :
+
+```{r}
+library(kernlab)
+x=matrix(c(1, 2, 4, 5, 6),5,1)
+y=c(1,1,-1,-1,1)
+k <- polydot(degree=2,scale=1,offset=1)
+K <- kernelMatrix(k,x)
+```
+
+## Question 1
+
+La formulation duale du problème d'optimisation associé aux Support Vector Machines est la suivante :
+$$\mu^*=argmax_{0\leq\mu\leq C; \mu^Ty=0}(\mu^T1 - \frac{1}{2}\mu^Tdiag(y)Kdiag(y)\mu)$$
+avec K tel que 
+$$k(x_1,x_2)=(x_1^Tx_2+1)^2$$
+```{r}
+print(K)
+```
+
+et C fixé.
+
+## Question 2
+
+
+```{r}
+c=rep(-1,nrow(x))      #faire attention au -
+H=diag(y)%*%K%*%diag(y) #faire attention au -
+A=t(y)
+b=0
+r=0
+u=c(C,C,C,C,C)
+l=c(0,0,0,0,0)
+```
+
+## Question 3
+
+Il est nécessaire de recharger la variable u indexée sur C.
+```{r}
+C=100
+u=c(C,C,C,C,C)
+```
+La solution retournée est la suivante :
+```{r}
+alpha <- ipop(c,H,A,b,l,u,r)
+print(alpha)
+```
+Nous obtenons bien les valeurs indiquées dans l'énoncé:
+$$\alpha_1=0,\alpha_2=2.5,\alpha_3=0,\alpha_4=7.333,\alpha_5=4.833$$
+
+## Question 4
+
+D'après le théorème du représentant, on a :
+$$f(x)=\sum{\alpha_i*y_i*k(x_i,x)}+b^*$$
+En pratique, compte tenu de la valeurs des alphai :
+
+$$f(x)=0*1*(1*x+1)^2+2.5*1*(2*x+1)^2+0*(-1)*(4*x+1)^2+7.333*(-1)*(5*x+1)^2
++4.833*1*(6*x+1)^2+b^*$$
+
+$$f(x)=0.663x^2-5.334x+b^*$$
+Or, x4 étant vecteur support de la classe y=-1, nous avons f(x4)=-1
+D'où : $$b^*=-1-0.663*5^2+5.334*5=9.095$$
+Par identification : 
+$$\omega_2=0.663$$
+$$\omega_1=-5.334$$
+$$\omega_0=b^*=9.095$$
+## Question 5
+
+Création de la fonction f
+```{r}
+f <- function(x){
+  return (0.663*x^2-5.334*x+9.095)
+}
+```
+
+La représentation graphique donne alors
+```{r}
+x = c(1, 2, 4, 5, 6) ; y = c(1, 1, 2, 2, 1)
+plot(x, rep(0, 5), pch = c(21, 22)[y], bg = c("red", "green3")[y], cex = 1.5, ylim = c(-1.7, 1), xlim = c(0, 8), ylab = "",
+     xlab = "x", las = 2)
+
+grid()
+text(matrix(c(1.5, 4.3, 7, 0.5, 0.5, 0.5), 3, 2), c("class 1", "class -1", "class 1"),
+     col = c("red", "green3", "red"))
+abline(h=0) ; abline(v=c(3, 5.5))
+lines(seq(1,8,0.1),f(seq(1,8,0.1)),col="red",type="l",lty=3,lwd=2)
+```
+# Exercice II : Support Vector Machines et validation croisée
+
+## Question 1
+
+Importation du jeu de données et visualisation : 
+```{r}
+path="/Users/antoinebourgoin/Documents/1 - Mention HSB/Machine Learning/Cours 2/Travaux Pratiques - Support Vector Machines-20201007/"
+setwd(path)
+
+bTrain <- read.table("Banana_train.txt")
+bTest <- read.table("Banana_test.txt")
+head(bTest)
+```
+
+```{r}
+plot(bTrain$X1, bTrain$X2, col=bTrain$Y+2)
+plot(bTest$X1, bTest$X2, col=bTest$Y+2)
+```
+
+Le nom du fichier semble provenir de la forme graphique du dataset.
+
+## Question 2
+
+```{r}
+gaussian.fit <- ksvm(Y~., data=bTrain,  type = 'C-svc', kernel = 'rbfdot', kpar=list(sigma=5) , C=5)
+gaussian.fit
+```
+
+## Question 3
+
+```{r}
+plot(gaussian.fit)
+```
+```{r}
+C_list=seq(5,5,by=1)
+sigma_list=seq(1,100,by=1)
+nb.vecteurs=numeric(length(C_list)*length(sigma_list))
+
+for (k in 1:length(C_list)){
+  C <- C_list[k]
+  for (l in 1:length(sigma_list)){
+    sigma=sigma_list[l]
+    fit.temp <- ksvm(Y~., data=bTrain,  type = 'C-svc', kernel = 'rbfdot', kpar=list(sigma=sigma) , C=C)
+    nb.vecteurs[(k-1)*length(sigma_list)+l]=fit.temp@nSV
+  }
+}
+plot(sigma_list,nb.vecteurs,type="o",lty=3,xlab="valeur de sigma",ylab="nSV",main="Evolution nombre de Support Vectors avec C=5 (fixé)")
+```
+
+```{r echo=FALSE}
+C_list=seq(1,100,by=1)
+sigma_list=seq(5,5,by=1)
+nb.vecteurs=numeric(length(C_list)*length(sigma_list))
+
+for (k in 1:length(C_list)){
+  C <- C_list[k]
+  for (l in 1:length(sigma_list)){
+    sigma=sigma_list[l]
+    fit.temp <- ksvm(Y~., data=bTrain,  type = 'C-svc', kernel = 'rbfdot', kpar=list(sigma=sigma) , C=C)
+    nb.vecteurs[(k-1)*length(sigma_list)+l]=fit.temp@nSV
+  }
+}
+plot(C_list,nb.vecteurs,type="o",lty=3,xlab="valeur de C",ylab="nSV",main="Evolution nombre de Support Vectors  avec sigma=5 (fixé)")
+```
+
+Il est d'ores-et-déjà possible de voir que la valeur de C implique une forte variation du nombre de vecteurs support. Plus C est grand, moins il y a de vecteurs support. Cela paraît logique du fait que C agit comme une contrainte dans la formule de Lagrange associée à la modélisation. Plus la contrainte est forte, plus faible est le nombre de vecteurs compatible avec cette contrainte. 
+Sigma semble également avoir une influence sur le nombre de SV. Plus sigma augmente, plus le nombre de vecteurs support augmente et donc plus la fonction de répartition s'affine aux données de bTrain.
+
+Pour confirmer cette hyptohèse, une carte de chaleur indexée sur le nombre de vecteurs supports semble pertinente.
+
+```{r include=FALSE}
+lseq <- function(start,end,nb){
+  return(exp(seq(log(start),log(end),length.out=nb)))
+}
+```
+
+
+```{r}
+C_list=lseq(0.01,100,50)
+sigma_list=lseq(0.01,100,50)
+nb.vecteurs=numeric(length(C_list)*length(sigma_list))
+C.values=numeric(length(C_list)*length(sigma_list))
+sigma.values=numeric(length(C_list)*length(sigma_list))
+
+for (k in 1:length(C_list)){
+  C <- C_list[k]
+  for (l in 1:length(sigma_list)){
+    sigma=sigma_list[l]
+    fit.temp <- ksvm(Y~., data=bTrain,  type = 'C-svc', kernel = 'rbfdot', kpar=list(sigma=sigma) , C=C)
+    nb.vecteurs[(k-1)*length(sigma_list)+l]=fit.temp@nSV
+    C.values[(k-1)*length(sigma_list)+l]=C
+    sigma.values[(k-1)*length(sigma_list)+l]=sigma
+  }
+}
+res=matrix(nb.vecteurs,nrow=length(C_list),ncol=length(sigma_list))
+
+library(pheatmap)
+pheatmap(res,cluster_rows = FALSE,cluster_cols = FALSE)
+```
+
+Le nombre de vecteurs supports varie donc bien selon les valeurs de C et sigma.
+
+A sigma fixé, la séparatrice se retrouve davantage "lissée" lorsque C est grand : 
+```{r}
+gaussian.fit2 <- ksvm(Y~., data=bTrain,  type = 'C-svc', kernel = 'rbfdot', kpar=list(sigma=5) , C=1)
+gaussian.fit3 <- ksvm(Y~., data=bTrain,  type = 'C-svc', kernel = 'rbfdot', kpar=list(sigma=5) , C=10)
+gaussian.fit4 <- ksvm(Y~., data=bTrain,  type = 'C-svc', kernel = 'rbfdot', kpar=list(sigma=5) , C=100)
+
+plot(gaussian.fit2, main="Fonction de répartition pour C=1")
+plot(gaussian.fit3, main="Fonction de répartition pour C=10")
+plot(gaussian.fit4, main="Fonction de répartition pour C=100")
+```
+
+## Question 4
+
+```{r}
+C_list=lseq(0.01,100,50)
+sigma_list=lseq(0.01,100,50)
+erreur=matrix(0,length(C_list),length(sigma_list))
+
+for (k in 1:length(C_list)){
+  C <- C_list[k]
+  for (l in 1:length(sigma_list)){
+    sigma=sigma_list[l]
+    fit.temp <- ksvm(Y~., data=bTrain,  type = 'C-svc', kernel = 'rbfdot', kpar=list(sigma=sigma) , C=C, cross=7)
+    erreur[l,k]=fit.temp@cross
+  }
+}
+
+library(pheatmap)
+pheatmap(erreur,cluster_rows = FALSE,cluster_cols = FALSE)
+```
+
+La valeur du couple (C*,simga*) peut donc être déduit :
+
+```{r}
+couple <- which(erreur == min(erreur), arr.ind = TRUE)
+sigma.opt <- sigma_list[couple[1]]
+C.opt <- C_list[couple[2]]
+print(c(paste("C*=",C.opt),paste("sigma*=",sigma.opt),paste("erreur cross-validée associée = ",erreur[couple[1],couple[2]])))
+```
+
+## Question 5
+Construction du modèle SVM associé au couple optimal (C*,sigma*) :
+```{r}
+SVM.best <- ksvm(Y~., data=bTrain,  type = 'C-svc', kernel = 'rbfdot', kpar=list(sigma=sigma.opt) , C=C.opt, cross=10)
+SVM.best
+
+plot(SVM.best, data=bTrain)
+```
+
+La représentation graphique ne donnant aucune véritable indication sur le résultat. Pour avoir un aperçu de la précision du modèle, une estimation du taux d'erreur peut être faite.
+
+```{r}
+y_estim=predict(SVM.best,bTest[,1:2])
+contingence <- table(y=bTest[,3],y_estim)
+contingence
+```
+
+Il est alors possible d'en déduire le taux d'erreur epsilon :
+
+```{r}
+epsilon=1-sum(diag(contingence))/sum(contingence)
+epsilon
+```
+
+Ce taux semble satisfaisant, bien qu'il est probable qu'il soit perfectible étant donné le faible nombre de points étudiés au voisinage du couple (C*,sigma*) optimal.
+Un moyen de réduire ce taux d'erreur serait donc d'affiner les recherches autour de ce couple optimal.
