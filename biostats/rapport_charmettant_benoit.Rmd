@@ -1,0 +1,79 @@
+---
+title: "Rapport du projet final"
+author: "Benoit Charmettant"
+date: "01/12/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Rapport du projet
+
+## Prétraitement des données
+
+Importons au préalable le set de données
+```{r}
+data <- read.table("~/data/biostat/chd.dat", header=TRUE)
+data
+```
+### Question 1
+
+Nous créeons d'abord une variable data_complete contenant seulement les valeurs connues de sbp.
+
+```{r}
+data_complete <- data[data$sbp != ".",]
+data_complete$sbp <- as.integer(data_complete$sbp)
+```
+Calculons ensuite les moyennes relativement à la variable chd
+
+```{r}
+dpb_mean_by_chd <- as.integer(tapply(data_complete$sbp, data_complete$chd, mean))
+dpb_mean_by_chd
+```
+Les moyennes sont casté en Integer
+
+Remplaçons finalement les valeurs manquantes
+
+```{r}
+data$sbp[data$sbp == "." & data$chd == 0] <- rep(dpb_mean_by_chd[1], length(data$sbp[data$sbp == "." & data$chd == 0]))
+
+data$sbp[data$sbp == "." & data$chd == 1] <- rep(dpb_mean_by_chd[2], length(data$sbp[data$sbp == "." & data$chd == 1]))
+
+# on cast finalement la colonne sbp de data
+
+data$sbp <- as.integer(data$sbp)
+
+data
+```
+### Question 2
+
+```{r}
+data$bmi <- (data$wt/2.2) / (data$ht*2.54/100)^2
+X <- scale(data[, c(3,4,5,6,8)])
+head(X)
+y <- data$chd
+```
+## Analyse statistique des données
+
+### Question 1
+
+Effectons une analyse en composantes principales. 
+
+```{r}
+fit.pca <- prcomp(X)
+summary(fit.pca)
+```
+
+```{r}
+library(ggplot2)
+library(factoextra)
+fviz_pca_biplot(fit.pca, habillage=data$chd)
+```
+### Question 2
+
+```{r}
+ggpairs(data = X, column=1:5, ggplot2::aes(colour = y), progress = FALSE)
+```
+

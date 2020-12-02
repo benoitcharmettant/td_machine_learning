@@ -1,9 +1,12 @@
 ---
-title: "R Notebook"
-output: html_notebook
-authors: Antoine Bourgoin & Benoit Charmettant
-date: Novembre 2020 
+title: "TP2-KLR-Rapport"
+author: "Antoine Bourgoin & Benoit Charmettant"
+date: "Pour le 18/11/2020"
+output:
+  pdf_document: default
+  html_document: default
 ---
+
 ```{r}
 library(glmnetUtils)
 library(caret)
@@ -13,19 +16,72 @@ ad_dataset <- read.table("Alzheimer_Webster.txt")
 
 # Cas pratique
 
-Commençons par charger les données. Et diviser les paramètres des labels
+Commençons par charger les données. Et séparer les paramètres des labels
 
 ```{r}
 X <- model.matrix(Y~., data=ad_dataset)[,-1]
 Y <- ad_dataset$Y
+dim(X)
+sum(Y)
 ```
+Le set de données est composé de 364 patients au total pour lesquels sont disponible l'expression de 8650 gène. Y regroupe les labels de chaque patient (0 pour les 188 patients du groupe de contrôle, non affecté par la maladie d'alzheimer et 1 pour les 176 patients atteints par cette maladie)
+
+## Question 1
+
+Le jeu de données étant de grande dimension (8650 gènes par patient) nous allons utiliser une régression régularisé par méthode Lasso ($\alpha = 1$) ce qui permet de d'éliminer un grand nombre de dimensions (coefficient nul). La fonction glmnet permet d'optimiser un modèle de régression logistique via l'algorithme de Newton.
+
 ```{r}
 fit.data <- cv.glmnet(X, Y, alpha = 1, family = "binomial", type.measure ="class")
 plot(fit.data)
 ```
+Taux d'erreur selon la valeur du paramètre lambda pour une régularisation Lasso
+
+```{r}
+head(coef(fit.data))
+```
+Si l'on affiche les premier coefficients on s'aperçoit qu'ils sont effectivement nuls pour un majorité d'entre eux.
+
+Nous pouvons alors récupérer les gènes pour lesquels les coefficients ne s'annulent pas.
+
+```{r}
+library(coefplot)
+head(extract.coef(fit.data))
+dim(extract.coef(fit.data))
+```
+
+Sur les 8650 gènes seuls 68 ont été sélectionnés par le modèle, pour un taux d'erreur proche de 10%.
+
+## Question 2
+
+Nous pouvons maintenant considérer une regression elastic net et faire varier le paramètre $\alpha$ qui répartie la régularisation entre une régularisation Lasso et Ridge ainsi que le paramètre $\lambda$ qui fait varier le poids de la régularisation lors de l'optimisation.
 
 ```{r}
 fit.data.b <- cva.glmnet(X, Y, family = "binomial", type.measure ="class")
 plot(fit.data.b)
 ```
+Taux d'erreur selon la valeur de $\alpha$ (pour chaque courbe de couleur) et $l\lambda$ abscisse.
 
+```{r}
+# Get alpha.
+get_alpha <- function(fit) {
+  alpha <- fit$alpha
+  error <- sapply(fit$modlist, function(mod) {min(mod$cvm)})
+  alpha[which.min(error)]
+}
+
+# Get all parameters.
+get_model_params <- function(fit) {
+  alpha <- fit$alpha
+  lambdaMin <- sapply(fit$modlist, `[[`, "lambda.min")
+  lambdaSE <- sapply(fit$modlist, `[[`, "lambda.1se")
+  error <- sapply(fit$modlist, function(mod) {min(mod$cvm)})
+  best <- which.min(error)
+  data.frame(alpha = alpha[best], lambdaMin = lambdaMin[best],
+             lambdaSE = lambdaSE[best], eror = error[best])
+}
+
+get_model_params (fit.data.b)
+```
+Le meilleur taux de classification est obtenu pour ces paramètres
+
+On remarque que le $\alpha$ optimal ne se situe pas très proche de 1 commme supposé lors de la question précédente mais c'est car les résultats sont très proches pour $\alpha > 0.1$. Sa valeur minimale est très surement due à la fluctuation statistique. 
