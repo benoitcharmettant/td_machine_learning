@@ -51,9 +51,14 @@ data
 
 ```{r}
 data$bmi <- (data$wt/2.2) / (data$ht*2.54/100)^2
-X <- scale(data[, c(3,4,5,6,8)])
-head(X)
+X <- as.data.frame(scale(data[, c(3,4,5,6,8)]))
 y <- data$chd
+y[y==1] <- "Oui"
+y[y==0] <- "Non"
+
+
+X$chd <- y
+X
 ```
 ## Analyse statistique des données
 
@@ -74,6 +79,32 @@ fviz_pca_biplot(fit.pca, habillage=data$chd)
 ### Question 2
 
 ```{r}
-ggpairs(data = X, column=1:5, ggplot2::aes(colour = y), progress = FALSE)
+library(reshape2)
+X.m <- melt(X, id.var="chd")
+
+require(ggplot2)
+require(ggplot2)
+p <- ggplot(data = X.m, aes(x=variable, y=value)) 
+p <- p + geom_boxplot(aes(fill = chd))
+# if you want color for points replace group with colour=Label
+p <- p + geom_point(aes(y=value, group=chd), position = position_dodge(width=0.75))
+p <- p + facet_wrap( ~ variable, scales="free")
+p <- p + xlab("x-axis") + ylab("y-axis") + ggtitle("Distribution des différentes variables explicatives selon la survenue d'un infarctus")
+p <- p + guides(fill=guide_legend(title="Infarctus"))
+p 
+
 ```
+
+Essayons de d'évaluer l'influence de ces différentes variables sur l'apparition d'un infarctus, pour les variables
+explicatives continues dans un premier temps, nous nous intéresserons ensuite au cas des sujets fumeurs et non fumeurs.
+
+
+
+TODO: Utiliser la partie du cours EXEMPLE D’APPLICATION ANALYSE DE LA VARIANCE À UN FACTEUR
+pour comparer deux groupes 
+```{r}
+fit.lm <- lm(sbp~-1+chd, data=X )
+summary(fit.lm)
+```
+
 
