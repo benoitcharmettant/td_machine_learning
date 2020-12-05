@@ -37,9 +37,9 @@ Les moyennes sont casté en Integer
 Remplaçons finalement les valeurs manquantes
 
 ```{r}
-data$sbp[data$sbp == "." & data$chd == 0] <- rep(dpb_mean_by_chd[1], length(data$sbp[data$sbp == "." & data$chd == 0]))
+data$sbp[data$sbp == "." & data$chd == 0] <- dpb_mean_by_chd[1]
 
-data$sbp[data$sbp == "." & data$chd == 1] <- rep(dpb_mean_by_chd[2], length(data$sbp[data$sbp == "." & data$chd == 1]))
+data$sbp[data$sbp == "." & data$chd == 1] <- dpb_mean_by_chd[2]
 
 # on cast finalement la colonne sbp de data
 
@@ -67,7 +67,7 @@ X
 Effectons une analyse en composantes principales. 
 
 ```{r}
-fit.pca <- prcomp(X)
+fit.pca <- prcomp(X[,1:5])
 summary(fit.pca)
 ```
 
@@ -82,8 +82,6 @@ fviz_pca_biplot(fit.pca, habillage=data$chd)
 library(reshape2)
 X.m <- melt(X, id.var="chd")
 
-require(ggplot2)
-require(ggplot2)
 p <- ggplot(data = X.m, aes(x=variable, y=value)) 
 p <- p + geom_boxplot(aes(fill = chd))
 # if you want color for points replace group with colour=Label
@@ -103,7 +101,7 @@ explicatives continues dans un premier temps, nous nous intéresserons ensuite a
 TODO: Utiliser la partie du cours EXEMPLE D’APPLICATION ANALYSE DE LA VARIANCE À UN FACTEUR
 pour comparer deux groupes 
 ```{r}
-fit.lm <- lm(sbp~-1+chd, data=X )
+fit.lm <- lm(sbp~-1+chd,data=X)
 summary(fit.lm)
 ```
 
