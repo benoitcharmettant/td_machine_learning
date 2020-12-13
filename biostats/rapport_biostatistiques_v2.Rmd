@@ -1,0 +1,383 @@
+---
+title: "Projet de Biostatistiques"
+author: "Antoine Bourgoin - Benoit Charmettant"
+date: "Pour le 13/12/2020"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message = FALSE}
+
+#Chargement des packages utiles
+library(reshape2)
+library(ggplot2)
+library(corrplot)
+library(GGally)
+library(factoextra)
+library(pheatmap)
+library(dendextend)
+```
+
+```{r}
+data <- read.table("~/data/biostat/chd.dat", header=TRUE)
+head(data)
+```
+# 0. PRETRAITEMENT DES DONNEES
+
+## Question 0.1
+
+Nous créeons d'abord une variable data_complete contenant seulement les valeurs connues de sbp.
+
+```{r}
+data_complete <- data[data$sbp != ".",]
+data_complete$sbp <- as.integer(data_complete$sbp)
+```
+Calculons ensuite les moyennes relativement à la variable chd
+
+```{r}
+dpb_mean_by_chd <- as.integer(tapply(data_complete$sbp, data_complete$chd, mean))
+dpb_mean_by_chd
+```
+Les moyennes sont castées en Integer.
+
+Remplaçons finalement les valeurs manquantes
+
+```{r}
+data$sbp[data$sbp == "." & data$chd == 0] <- rep(dpb_mean_by_chd[1], length(data$sbp[data$sbp == "." & data$chd == 0]))
+
+data$sbp[data$sbp == "." & data$chd == 1] <- rep(dpb_mean_by_chd[2], length(data$sbp[data$sbp == "." & data$chd == 1]))
+
+# on cast finalement la colonne sbp de data
+
+data$sbp <- as.integer(data$sbp)
+```
+
+## Question 0.2
+
+Nous créons d'abord une nouvelle colonne associée à l'indice de masse corporelle.
+
+```{r}
+data$bmi <- (data$wt/2.2) / (data$ht*2.54/100)^2
+head(data)
+```
+
+Modification du type de data vers dataframe.
+
+```{r}
+data <- as.data.frame(data)
+```
+
+Créons à présent une variable X correspondant à l'ensemble des variables explicatives sbp, dbp, chol, cigs et bmi
+
+```{r}
+X <- subset.data.frame(data, select = -c(ht, wt, chd))
+head(X)
+```
+
+```{r}
+y <- subset.data.frame(data, select = c(chd))
+head(y)
+```
+
+
+# ANALYSE STATISTIQUE DES DONNEES
+
+## Question 1.1
+
+Réalisons une analyse par composantes principales sur l'ensemble des variables explicatives en utilisant la fonction prcomp()
+en veillant à normaliser les variables.
+
+```{r}
+fit.pca <- prcomp(X, scale = TRUE)
+summary (fit.pca)
+```
+Les axes principaux sont représentés ci-dessous.
+
+```{r}
+fit.pca$rotation
+```
+Nous pouvons remarquer que sbp et dhp semblent avoir une forte contribution à l'axe principal, tandis que cigs et bmi semblent davantage contribuer à l'axe principal secondaire. Cela est confirmé par la représentation ci-dessous :
+```{r}
+fviz_pca_var(fit.pca, repel = TRUE)
+```
+
+```{r}
+head(fit.pca$x)
+```
+head() ne permet ici pas de ressortir un grand nombre déductions. A retirer
+
+Observons à présent le pourcentage de variance capturé par les axes principaux (A remonter dans l'analyse, pour dire si l'analyse est concluante ou non)
+
+```{r}
+fviz_screeplot(fit.pca, addlabels=TRUE)
+```
+A eux deux, les deux premiers axes principaux rassemblent 61.5% de l'information, ce qui semble a priori semble valider la représentation graphique des individus dans l'espace 2D engendré par les deux axes principaux (le plan principal).
+
+```{r}
+fviz_pca_biplot(fit.pca, habillage = data[, "chd"])
+```
+
+Il semble que les indivudus ayant subi un infarcus au cours des 8 dernières années (chd = 1) soient plutôt répartis dans la partie gauche ( x<0), alors que les individus sains se situent davantage dans la partie droite.
+Compte tenu de la contribution des variables, cette tendance semble logique. En effet, les personnes souffrant de taux importants de cholestérol, d'obésité et sujets à l'hypertension sont davantage concernés par les pathologies cardiaques.
+Il est néanmoins étonnant d'observer que le caractère fumeur/non fumeur ne constitue a priori pas un facteur déterminant dans la pathologie, les individus du groupe chd = 1 n'étant que très légèrement majoritaires dans la partie supérieure du plan. Cette légère majorité dans les y positifs semblent révéler que ce caractère est davantage aggravant que déterminant.
+
+Voir s'il est possible de faire une CAH (pour observer si le seuil k =2 est proche de chd = 1 et chd =0, ce qui serait une première piste).
+
+## Question 1.2
+
+```{r}
+apply(X, 2, function(x) tapply(x, y, mean))
+```
+Un première observation numérique semble confirmer l'interprétation de l'analyse par composantes principales. Les individus à antécédents semblent avoir en moyenne une tension plus importante, tandis que le statut fumeur semble ne même pas être déterminant dans la survenue d'infarctus, la proportion de fumeurs étant supérieure de 9 points (46% contre 37%) chez les individus chd = 0 que chez ceux ayant eu un infarctus au cours des 8 dernières années (chd = 1).
+L'IMC (bmi) ne semble toutefois pas notablement différent entre les deux groupes, du moins si l'on se fie à sa valeur moyenne.
+
+```{r, echo = TRUE}
+data2 <- data
+data2$chd[data2$chd==1] <- "Oui"
+data2$chd[data2$chd==0] <- "Non"
+
+data2 <- subset.data.frame(data2, select = -c(ht, wt))
+
+```
+
+```{r, echo = TRUE, fig.align = 'center', fig.height = 6, fig.width = 7.5}
+data.m <- melt(data2, id = "chd") 
+ggplot(data = data.m, aes(x = chd, y = value, color = chd)) + 
+  geom_boxplot(col = "black", show.legend = FALSE, outlier.colour = NA) + theme_bw() +
+  geom_point(shape = 1, 
+             position = position_jitterdodge(dodge.width = .6, 
+                                             jitter.width = .8), 
+             size = 1.8, alpha = 1, show.legend = FALSE) +
+  facet_wrap(. ~ variable, scales = "free") +
+  theme(strip.background = element_rect(colour = "black", fill = "white"),
+        strip.text.x = element_text(size = 11),
+        axis.text = element_text(size = 9), axis.title = element_text(size = 0),
+        legend.position = "bottom") + xlab("") + ylab("") +
+  scale_color_manual(values = c("firebrick3", "springgreen4"))
+```
+Nous observons des différences notables en terme de tension (sbp et dpb). L'étude de la distribution de la valeur bmi permet met en évidence une variation notable dans la distribution autour de la valeur moyenne pour chacun des groupes chd = 0 ("Non") et chd = 1 ("Oui").La distribution du status fumeur est quant à elle difficilement interprétable du fait de la binarité des valeurs que peut prendre cette variable pour chaque individu.
+Enfin, la distribution ci-dessus confirme l'intuition faite sur le taux de cholestérol. Les 1er et 3ème quantiles sont notablement différents à l'instar de la moyenne, ce qui confirme l'apparente contribution de cette variable dans l'apparition d'un infarctus.
+
+De manière générale, il est à noter que les valeurs extrêmes semblent plus importantes pour chd = "Non", ce qui s'explique par un plus grand nombre d'individus appartenant à cette catégorie parmi la population de l'échantillon total.
+
+Il s'agit à présent de confirmer ces interprétations visuelles par le biais de tests statistiques qui visent à évaluer la fiabilité des distributions observées.
+
+Afin d'évaluer la pertinence des différences entre les moyennes des classes {chd = 0} et {chd = 1}, nous proposons ici une évaluation de l'intervalle de confiance à 95% de la différence entre les moyennes de ces deux classes pour chacune des variables explicatives.
+
+```{r}
+fit.lm11 <- lm(sbp~chd, data = data2)
+fit.lm12 <- lm(dpb~chd, data = data2)
+fit.lm13 <- lm(chol~chd, data = data2)
+fit.lm14 <- lm(cigs~chd, data = data2)
+fit.lm15 <- lm(bmi~chd, data = data2)
+```
+
+
+```{r, echo=TRUE ,fig.align = 'center', fig.width = 4, fig.height = 3}
+fitTukey11 <- TukeyHSD(aov(fit.lm11))
+fitTukey12 <- TukeyHSD(aov(fit.lm12))
+fitTukey13 <- TukeyHSD(aov(fit.lm13))
+fitTukey14 <- TukeyHSD(aov(fit.lm14))
+fitTukey15 <- TukeyHSD(aov(fit.lm15))
+
+plot(fitTukey11, las = 2, cex.axis = .5, sub = "sbp (pression systolique)")
+plot(fitTukey12, las = 2, cex.axis = .5, sub = "dpb (pression diastolique)")
+plot(fitTukey13, las = 2, cex.axis = .5, sub = "chol (taux de cholestérol)")
+plot(fitTukey14, las = 2, cex.axis = .5, sub = "cigs (statut fumeur)")
+plot(fitTukey15, las = 2, cex.axis = .5, sub = "bmi (IMC)")
+```
+
+Les résultats obtenus donnent une excellente indication sur la valeur des résultats graphiques obtenus plus haut (boxplot).
+
+ - pression diastolique (dbp) : La différence de moyenne calculée pour les classes fumeur/non-fumeur est notable. En effet, l'égalité de ces deux moyennes est à l'extérieure de l'IC à 95%, ce qui confirme la corrélation probable de ce facteur avec la survenue d'un accident cardiovasculaire.
+ 
+ - Les résultats obtenus pour les autres variables explicatives sont bien moins concluants (0 est toujours inclus dans l'intervalle de confiance à 95% de la différence de moyennes) et révèlent la nécessité d'être prudent sur la contribution de ces variables lors de la modélisation du schéma prédictif (questions suivantes).
+
+# Question 1.3
+
+```{r}
+fit.lm3 <- lm(chd ~ -1 + cigs, data = data)
+summary(fit.lm3)
+```
+puis
+
+```{r}
+test <-  t.test(x = data$chd[data$cigs == 1], y = data$chd[data$cigs == 0], paired = FALSE, conf.level = 0.95)
+test
+```
+
+Parmi les fumeurs, il y a 13% d'individus ayant eu un infarctus au cours des 8 dernières années, contre 18% chez les non-fumeurs. Cette observation, bien que contre-intuitive, confirme les analyses aux questions précédentes.
+
+La p-value étant élevée, cette constatation ne peut être généralisée. Il est probable que cet échantillon de 100 individus ne soit pas représentatif de l'impact réel du statut fumeur dans la survenue d'infarctus.
+
+L'intervalle de confiance à 95% de la différence est le suivant : 
+```{r}
+plot(test$conf.int, y = c(1,1), ,type = "o", xlab = "Différence", ylab = "Statut fumeur", main = "IC à 95% de la différence entre la proportion d'accidents \n cardiovasculaires chez les fumeurs et les non-fumeurs")
+```
+
+L'intervalle de confiance montre que l'hypothèse selon laquelle la proportions d'accidents cardiovasculaires est plus importante chez les fumeurs que chez les non-fumeurs demeure tout à fait réaliste.
+
+## Question 1.4
+
+Compte tenu de l'analyse par composantes principales et de l'étude de la distribution de l'échantillon (question 1.1 et 1.2), l'IMC semble être croissant avec le risque d'avoir un accident cardiovasculaire.
+
+Procédons à une régression logistique avec chd comme variable réponse et bmi comme variable explicative. 
+
+Mettre en Latex la formule exponentielle (qui semble être en accord avec l'allure de la courbe que nous souhaitons avoir, et qui implique la croissance du risque = différent de gaussien par exemple -> binomial)
+```{r}
+data4 <- subset.data.frame(data, select = -c(wt,ht))
+fit.glm4 <- glm(chd~bmi, family = binomial("logit"), data = data4)
+summary(fit.glm4)
+```
+
+```{r}
+plot(data4$bmi, data4$chd, xlab = "IMC", ylab = "CHD", pch = 16, col = c("green3", "red")[data4$chd+1])
+points(data4$bmi, predict(fit.glm4, type = "response"), type = "b", pch = 16, col = "black")
+```
+La régression logistique obtenue montre en pente ascendante, en accord avec les analyses menées jusqu'alors (corrélation positive entre l'IMC et le risque d'accident cardiovasculaire).
+
+A présent, calculons l'odds-ratio associé à une augmentation de 1 point de l'IMC. La formule associée à ce calcul est la suivante :
+
+\begin{equation}
+OR = \frac{\mathbb{P} (Y = 1 | X = x + 1)/ \mathbb{P} (Y = 1 | X = x + 1)}{\mathbb{P} (Y = 1 | X = x)/ \mathbb{P} (Y = 1 | X = x)} = e^{\beta}
+\label{model1}
+\end{equation}
+avec beta l'estimateur trouvé par la regression logistique.
+
+Ainsi, l'application numérique donne :
+
+```{r}
+OR <- exp(fit.glm4$coefficients[2])
+OR
+```
+
+Le risque d'accident cardiovasculaire augmente donc de plus de 4% pour une augmentation de 1 point de l'IMC, ce qui est tout de même non négligeable compte tenu de la plage de valeur de l'IMC sur l'échantillon considéré (1er quartile à 23, 3ème quartile à plus de 26).
+
+Voyons à présent ce que vaut l'odds ratio lorsque la pression systolique est ajouté aux variables prédictrices.
+
+```{r}
+fit.glm42 <- glm(chd~bmi+sbp, family = binomial("logit"), data = data4)
+summary(fit.glm42)
+```
+```{r}
+OR.adjust <- exp(fit.glm42$coefficients[2])
+OR.adjust
+```
+
+Le risque d'accident cardiovasculaire augmente à présent de près de 2% pour une augmentation de 1 point de l'IMC. L'insertion de la pression systolique comme second indicateur diminue donc logiquement l'importance de l'IMC dans la prédiction proposée par le modèle de régression logistique.
+
+## Question 1.5
+
+```{r, echo = FALSE}
+library(glmnet)
+library(lars)
+```
+
+Nous utilisons ici la régression de Lasso (l1) pour construire le modèle de régression logistique pénalisée.
+
+```{r}
+X5 <- as.matrix(X)
+y5 <- as.matrix(y)
+```
+
+Il apparait particulièrement intéressant de voir quelles sont les caractéristiques que partagent les individus ayant des antécédents cardiaques (chd = 1).  
+
+```{r}
+ratio_0 <- rep(1 - (nrow(y5)-sum(y5)) / nrow(y5), nrow(y5)-sum(y5))
+ratio_1 <- rep(1 - sum(y5) / nrow(y5), sum(y5))
+1-ratio_1[1]
+```
+
+Etant donné leur faible représentativité dans l'échantillon total (16%, cf résultat ci-dessus), il peut être judicieux d'augmenter artificiellement la contribution de la classe {chd = 1} lors de la détermination du modèle logistique pénalisé.
+
+Pour obtenir une contribution de 50% de {chd = 1}, un déséquilibre de facteur 3.125 favorable aux individus de classe {chd = 1} est ajouté.
+
+```{r}
+
+weights <- numeric(nrow(y5))
+
+weights[y5 == 0] <- ratio_0
+weights[y5 == 1] <- ratio_1
+```
+
+Exécution de l'algorithme de régression logistique pénalisée l1 (alpha =1) avec l'ajout de poids aux différentes observations.
+
+```{r}
+fit5 = glmnet(X5, y5, family = binomial(link="logit"), alpha = 1, weights = weights, intercept = TRUE)
+plot(fit5, label = TRUE, xvar = "lambda")
+```
+La validation-croisée basée sur le maximum de vraisemblance nous donne les résultats suivants :
+
+```{r}
+fit.cv5 = cv.glmnet(X5, y5 ,type.measure = "mse", weights = weights, intercept = TRUE)
+plot(fit.cv5)
+```
+
+Il y a bien apparition d'un minimum du mse, pour lequel les valeurs suivantes sont obtenues pour chacun des coefficients devant les variables explicatives :
+
+```{r}
+coef(fit.cv5, s = fit.cv5$lambda.min)
+coef(fit.cv5, s = fit.cv5$lambda.1se)
+```
+La régression Lasso ne conserve que la pression diastolique comme variable explicative. Cette variable est donc indéniablement pertinente en terme de significativité statistique. A celle-ci peuvent être néanmoins ajoutées l'IMC et le taux de cholestérol pour lesquelles les précédentes analyses ont montré l'existence d'une corrélation avec le risque d'accidents cardiovasculaires. La statut fumeur, selon cet échantillon, ne semble jouer aucun rôle et ne peut donc pas être retenu selon des considérations de pertinence clinique.
+
+Il est intéressant de comparer cett régression logistique à la régression de type Ridge (l2), obtenue pour alpha = 0.
+
+```{r}
+fit52 = glmnet(X5, y5, family = binomial(link="logit"), alpha = 0, weights = weights, intercept = TRUE)
+plot(fit52)
+fit.cv52 = cv.glmnet(X5, y5 ,type.measure = "mse", weights = weights, intercept = TRUE, alpha = 0)
+plot(fit.cv52)
+```
+
+```{r}
+coef(fit.cv52, s = fit.cv52$lambda.min)
+```
+
+La régression pénalisée de Ridge accorde une contribution assez bmi contribution assez importante pour l'IMC en plus de la pression diastolique, puis viennent sbp et chol. chol semble avoir peu d'influence, alors qu'il semble s'agir d'un facteur connu de cause d'accident cardiovasculaire.
+
+## Question 1.6
+
+Vérifions si la méthode de sélection de variables pas-à-pas conduit au même résultat que la méthode de régression logistique pénalisée l1.
+
+```{r}
+data6 <- data4
+
+fit.selection <- glm(chd~., data = data4, family = binomial(link="logit"), weights = weights)
+selection <- step(fit.selection)
+```
+
+Le résultat affiché est cohérent avec la régression logistique pénalisée l1, avec la conservation d'une seule variable explicative (la pression diastolique dpb) pour le phénomène d'accident cardiovasculaire.
+
+## Question 1.7
+
+En considérant le modèle obtenu avec la régression logistique de Lasso, confrontons aux données réelles les prévisions du modèle :
+
+```{r}
+pred.temp1 <- predict(fit5, X5, type = "response", s = fit.cv5$lambda.min)
+
+pred1 <- round(pred.temp1)
+
+contingence1 <- table(y=y5,pred1)
+
+contingence1
+```
+Le tableau de contingence ci-dessus, confrontant aux données réelles les performances de prédiction du modèle de régression logistique pénalisée l1 basé sur la valeur minimale de lambda (modèle optimal), montre que les prédictions des individus sains est bonne voire très bonne, tandis que la prédiction des individus malades est médiocre.
+
+```{r}
+epsilon=1-sum(diag(contingence1))/sum(contingence1)
+epsilon
+```
+
+Dans sa globalité, le modèle généré est peu fiable (33% d'erreur parmi l'échantillon de 100 individus). Cela se comprend compte tenu de la prise en compte d'une seule variable explicative (pression diastolique), qui est vraisemblablement loin d'être la seule variable explicative du phénomène d'accident cardiovasculaire.
+D'autre part, la pondération des observations favorable aux individus appartenant à {chd = 1} a peut-être illégitimement donné trop d'importance à ces données par rapport aux autres.
+
+Néanmoins, il semble trop ambitieux d'obtenir une capacité prédictive largement supérieure à celle obtenue ici. En effet, le constat selon lequel le status fumeur/non-fumeur ne joue aucun rôle dans l'accroissement du risque d'infarctus parmi l'échantillon à disposition souligne bien la non-représentativité de cet échantillon vis-à-vis du phénomène réel. Ce statut est en réalité, d'après de nombreuses études menées sur un vaste nombre de sujets, prépondérant dans l'apparition de cette cardiopathie.
+
+Mis à part les résultats discutables de ce modèle, les analyses sont globalement cohérentes entre elles. Les premières intuitions émises suite à l'analyse par composantes principales se sont confirmées par la suite (forte corrélation entre la pression diastolique et le risque d'infarctus notamment).
+
