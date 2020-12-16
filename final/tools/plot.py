@@ -19,6 +19,7 @@ def boxplot_feature(name, data, meta, spl, ax, func):
     sns.boxplot(y='feature', x='sleep_stage', data=res, ax=ax)
     
 def compare_feature(func, data, meta, sample=None, col=["eeg_1","eeg_2","eeg_3","eeg_4","eeg_5","eeg_6","eeg_7"]): 
+    plt.rcParams['figure.figsize'] = [20, 5]
     n = len(data['eeg_1'])
     n_samples = len(sample)
     
@@ -31,11 +32,11 @@ def compare_feature(func, data, meta, sample=None, col=["eeg_1","eeg_2","eeg_3",
     plt.rcParams['figure.figsize'] = [20, 5]
 
     for i, name in enumerate(col):
-        boxplot_feature(name, data, meta, spl, ax=axes[i-1], func=func)
-        axes[i-1].set_title(name)
+        boxplot_feature(name, data, meta, spl, ax=axes[i], func=func)
+        axes[i].set_title(name)
         
         if not i == 0:
-            axes[i-1].get_yaxis().set_visible(False)
+            axes[i].get_yaxis().set_visible(False)
     plt.show()
     
 def plot_eeg(abs_index, raw_data, meta_data):

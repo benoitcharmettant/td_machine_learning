@@ -10,13 +10,14 @@ def log_ampl(x):
     return np.log(max(abs(x)))
 
 
-def log_mean(x):
-    return np.log(np.mean(x))
-
-
 def mean(x):
     return np.mean(x)
 
+def log_mean(x):
+    m = abs(np.mean(x))
+    
+    return np.log(m)
+    
 
 def log_energy(x):
     return np.log(fc.abs_energy(x))
