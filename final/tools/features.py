@@ -9,7 +9,6 @@ from scipy.stats import skew
 def log_ampl(x):
     return np.log(max(abs(x)))
 
-
 def mean(x):
     return np.mean(x)
 
@@ -41,3 +40,7 @@ def log_variance(x):
 
 def zero_crossings(x):
     return fc.number_crossing_m(x, 0)
+
+
+def test(x):
+    return [1, 2]

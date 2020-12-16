@@ -5,7 +5,7 @@ from pandas import DataFrame, read_csv, concat
 
 from numpy import zeros
 
-def extract_features(func_class, data, sample=None, col=["eeg_1","eeg_2","eeg_3","eeg_4","eeg_5","eeg_6","eeg_7"]):
+def extract_features(func_class, data, sample=None, col=["eeg_1","eeg_2","eeg_3","eeg_4","eeg_5","eeg_6","eeg_7"], verbose_end='\r'):
     # 
     n = len(data['eeg_1'])
 
@@ -25,7 +25,6 @@ def extract_features(func_class, data, sample=None, col=["eeg_1","eeg_2","eeg_3"
     c=1
     for index in spl:
         t1 = time.time()
-        print(f">>> {c} / {n_sample} <<<", end="\r")
         c+=1
         
         feat = zeros(n_columns)
@@ -40,12 +39,12 @@ def extract_features(func_class, data, sample=None, col=["eeg_1","eeg_2","eeg_3"
         res = res.append(feat, ignore_index=True)
         
         t2 = time.time()
-        print(f">>> {c} / {n_sample} <<< (Remains : {str(datetime.timedelta(seconds=(t2 - t1)*(n_sample-c)))})", end="\r")
+        print(f">>> {c} / {n_sample} <<< (Remains : {str(datetime.timedelta(seconds=(t2 - t1)*(n_sample-c)))})", end=verbose_end)
     return res
 
-def extract_all_features(func_class, data, save, col=["eeg_1","eeg_2","eeg_3","eeg_4","eeg_5","eeg_6","eeg_7"]):
+def extract_all_features(func_class, data, save, col=["eeg_1","eeg_2","eeg_3","eeg_4","eeg_5","eeg_6","eeg_7"], verbose_end='\r'):
     spl = [i for i in range(len(data['eeg_1']))]
-    features = extract_features(func_class, data, sample=spl, col=col)
+    features = extract_features(func_class, data, sample=spl, col=col, verbose_end=verbose_end)
     features['abs_index'] = spl
     features.to_csv(save)
     

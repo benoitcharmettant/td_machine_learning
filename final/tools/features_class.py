@@ -52,4 +52,4 @@ def test_func(x):
 class Test:
     n_outs = 2
     f = test_func
-    f_names = ['f_1', 'f_2']
+    f_names = ['fourier_alhpa', 'f_2']
