@@ -3,7 +3,10 @@ import datetime
 
 from pandas import DataFrame, read_csv, concat
 
-def extract_features(func, data, sample=None, col=["eeg_1","eeg_2","eeg_3","eeg_4","eeg_5","eeg_6","eeg_7"]):
+from numpy import zeros
+
+def extract_features(func_class, data, sample=None, col=["eeg_1","eeg_2","eeg_3","eeg_4","eeg_5","eeg_6","eeg_7"]):
+    # 
     n = len(data['eeg_1'])
 
     spl = sample
@@ -12,29 +15,37 @@ def extract_features(func, data, sample=None, col=["eeg_1","eeg_2","eeg_3","eeg_
         spl = [i for i in range(n)]
         
     n_sample = len(spl)
+    
+    features_names = [n for f in func_class for n in f.f_names]
+    n_features = len(features_names)
+    columns = [f"{col_name}_{f_name}" for col_name in col for f_name in features_names]
+    n_columns = len(columns)
         
-    res = DataFrame(columns=[f"{name}_{f.__name__}" for name in col for f in func])
+    res = DataFrame(columns=columns)
     c=1
     for index in spl:
         t1 = time.time()
         print(f">>> {c} / {n_sample} <<<", end="\r")
         c+=1
-        feat = [0 for i in range(len(func)*len(col))]
         
-        for i, f in enumerate(func):
-            for j, name in enumerate(col):
-                feat[len(func)*j+i] = f(data[f"{name}"][index])
+        feat = zeros(n_columns)
+        
+        for j, name in enumerate(col):
+            i = 0
+            for fc in func_class:
+                feat[n_features*j+i:n_features*j+i+fc.n_outs] = fc.f(data[f"{name}"][index])
+                i+=fc.n_outs
                 
-        feat = dict(zip(res.columns, feat))
+        feat = dict(zip(columns, feat))
         res = res.append(feat, ignore_index=True)
         
         t2 = time.time()
         print(f">>> {c} / {n_sample} <<< (Remains : {str(datetime.timedelta(seconds=(t2 - t1)*(n_sample-c)))})", end="\r")
     return res
 
-def extract_all_features(func, data, save, col=["eeg_1","eeg_2","eeg_3","eeg_4","eeg_5","eeg_6","eeg_7"]):
+def extract_all_features(func_class, data, save, col=["eeg_1","eeg_2","eeg_3","eeg_4","eeg_5","eeg_6","eeg_7"]):
     spl = [i for i in range(len(data['eeg_1']))]
-    features = extract_features(func, data, sample=spl, col=col)
+    features = extract_features(func_class, data, sample=spl, col=col)
     features['abs_index'] = spl
     features.to_csv(save)
     

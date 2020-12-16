@@ -9,23 +9,34 @@ from scipy.stats import skew
 def log_ampl(x):
     return np.log(max(abs(x)))
 
+
 def log_mean(x):
     return np.log(np.mean(x))
+
 
 def mean(x):
     return np.mean(x)
 
+
 def log_energy(x):
     return np.log(fc.abs_energy(x))
+
 
 def kurtosis(x):
     return fc.kurtosis(x)
 
+
+def log_kurtosis(x):
+    return np.log(fc.kurtosis(x))
+
+
 def skewness(x):
     return skew(x)
 
+
 def log_variance(x):
     return np.log(fc.variance(x))
+
 
 def zero_crossings(x):
     return fc.number_crossing_m(x, 0)
