@@ -3,7 +3,7 @@ import numpy as np
 def get_mean_freq_bands(x):
     
     fft_vals = np.absolute(np.fft.rfft(x))
-    fft_freq = np.fft.rfftfreq(len(x), 1.0/_F_)
+    fft_freq = np.fft.rfftfreq(len(x), 1.0/50)
 
     eeg_bands = {'Delta': (0, 4),
                  'Theta': (4, 8),
@@ -24,7 +24,7 @@ def get_mean_freq_bands(x):
         
         eeg_band_fft[band] = mean
         
-    return eeg_band_fft
+    return list(eeg_band_fft.values())
 
 # TODO: Mettre en commun le calcul des bandes pour l'extraction de feature
 def get_mean_alpha(x):

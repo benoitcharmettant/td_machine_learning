@@ -6,6 +6,8 @@ from tsfresh.feature_extraction.settings import MinimalFCParameters, EfficientFC
 
 from scipy.stats import skew
 
+from tools.freq import get_mean_freq_bands
+
 def log_ampl(x):
     return np.log(max(abs(x)))
 
@@ -40,6 +42,9 @@ def log_variance(x):
 
 def zero_crossings(x):
     return fc.number_crossing_m(x, 0)
+
+def frequency_bands(x):
+    return get_mean_freq_bands(x)
 
 
 def test(x):

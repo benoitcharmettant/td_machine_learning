@@ -44,12 +44,8 @@ class Zero_crossings:
     n_outs = 1
     f = zero_crossings
     f_names = [f.__name__]
-
     
-def test_func(x):
-    return [1, 2]
-
-class Test:
-    n_outs = 2
-    f = test_func
-    f_names = ['fourier_alhpa', 'f_2']
+class Frequency_bands:
+    n_outs = 5
+    f = frequency_bands
+    f_names = ["band_delta", "band_theta", "band_alpha", "band_beta", "band_gamma"]
