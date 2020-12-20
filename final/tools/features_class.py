@@ -49,3 +49,15 @@ class Frequency_bands:
     n_outs = 5
     f = frequency_bands
     f_names = ["band_delta", "band_theta", "band_alpha", "band_beta", "band_gamma"]
+    
+class Complexity:
+    n_outs = 1
+    f = complexity
+    f_names = [f.__name__]
+    
+class Fft_agg:
+    n_outs = 4
+    f = fft_agg
+    f_names = ["fft_centroid", "fft_variance", "fft_skew", "fft_kurtosis"]
+    
+

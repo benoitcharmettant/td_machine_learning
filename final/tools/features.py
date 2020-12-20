@@ -46,6 +46,14 @@ def zero_crossings(x):
 def frequency_bands(x):
     return get_mean_freq_bands(x)
 
+def complexity(x):
+    return cid_ce(x, True)
+
+def fft_agg(x):
+    param = [{"aggtype": "centroid"}, {"aggtype": "variance"}, {"aggtype": "skew"}, {"aggtype": "kurtosis"}] 
+    return list(dict(fc.fft_aggregated(x, param)).values())
+
+
 
 def test(x):
     return [1, 2]
