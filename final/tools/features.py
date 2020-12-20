@@ -47,7 +47,7 @@ def frequency_bands(x):
     return get_mean_freq_bands(x)
 
 def complexity(x):
-    return cid_ce(x, True)
+    return fc.cid_ce(x, True)
 
 def fft_agg(x):
     param = [{"aggtype": "centroid"}, {"aggtype": "variance"}, {"aggtype": "skew"}, {"aggtype": "kurtosis"}] 
