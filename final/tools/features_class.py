@@ -60,4 +60,14 @@ class Fft_agg:
     f = fft_agg
     f_names = ["fft_centroid", "fft_variance", "fft_skew", "fft_kurtosis"]
     
+class Entropy:
+    f = entropy_c
+    f_names = ["entropy"]
+    n_outs = 1
+    
+class SEntropy:
+    f = spect_entropy
+    f_names = ["s_entropy"]
+    n_outs = 1
+    
 

@@ -19,7 +19,6 @@ def log_mean(x):
     
     return np.log(m)
     
-
 def log_energy(x):
     return np.log(fc.abs_energy(x))
 
@@ -53,7 +52,11 @@ def fft_agg(x):
     param = [{"aggtype": "centroid"}, {"aggtype": "variance"}, {"aggtype": "skew"}, {"aggtype": "kurtosis"}] 
     return list(dict(fc.fft_aggregated(x, param)).values())
 
+def entropy_c(x):
+    return app_entropy(x)
 
+def spect_entropy(x):
+    return spectral_entropy(x, 50, method='welch')
 
 def test(x):
     return [1, 2]
